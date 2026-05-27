@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GRN Stock Report — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+  /* ─── RESET & BASE ─────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:        #0b0f1a;
+    --surface:   #111827;
+    --surface2:  #1a2235;
+    --border:    rgba(255,255,255,0.07);
+    --text:      #f0f4ff;
+    --muted:     #7a8aa8;
+    --accent:    #3b82f6;
+    --accent2:   #10b981;
+    --accent3:   #f59e0b;
+    --accent4:   #ef4444;
+    --c1:#3b82f6; --c2:#10b981; --c3:#f59e0b; --c4:#ef4444;
+    --c5:#8b5cf6; --c6:#06b6d4; --c7:#f97316; --c8:#ec4899;
+    --c9:#a3e635; --c10:#fbbf24;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --radius:    14px;
+    --shadow:    0 8px 32px rgba(0,0,0,0.4);
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── NOISE OVERLAY ─────────────────────────────────────────────── */
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    opacity: 0.6;
+  }
+
+  /* ─── LAYOUT ─────────────────────────────────────────────────────── */
+  .wrapper { position:relative; z-index:1; max-width:1320px; margin:0 auto; padding:28px 24px 48px; }
+
+  /* ─── HEADER ─────────────────────────────────────────────────────── */
+  .header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 32px; gap: 16px; flex-wrap: wrap;
+  }
+  .header-left {}
+  .eyebrow {
+    font-family: var(--font-body); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .eyebrow::before { content:''; display:inline-block; width:20px; height:2px; background:var(--accent); border-radius:2px; }
+  h1 {
+    font-family: var(--font-head); font-size: clamp(22px,3vw,34px);
+    font-weight: 800; letter-spacing: -0.02em; color: var(--text);
+    line-height: 1.1;
+  }
+  h1 span { color: var(--accent); }
+  .header-meta {
+    font-size: 13px; color: var(--muted); margin-top: 6px;
+    display:flex; gap:16px; flex-wrap:wrap;
+  }
+  .header-meta b { color: var(--text); }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25);
+    color: #93c5fd; padding: 5px 12px; border-radius: 20px; font-size: 11px;
+    font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+    align-self: flex-start;
+  }
+  .badge::before { content:'●'; font-size:8px; color:#3b82f6; }
+
+  /* ─── KPI GRID ────────────────────────────────────────────────────── */
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(4,1fr); gap: 14px;
+    margin-bottom: 24px;
+  }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 22px;
+    position: relative; overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .kpi::after {
+    content:''; position:absolute; bottom:0; left:0; right:0;
+    height: 3px; background: linear-gradient(90deg, var(--kpi-c, #3b82f6), transparent);
+  }
+  .kpi-0 { --kpi-c: #3b82f6; }
+  .kpi-1 { --kpi-c: #10b981; }
+  .kpi-2 { --kpi-c: #f59e0b; }
+  .kpi-3 { --kpi-c: #8b5cf6; }
+  .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; }
+  .kpi-value { font-family: var(--font-head); font-size: 26px; font-weight: 700; color: var(--text); line-height: 1; }
+  .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
+
+  /* ─── CHART GRID ──────────────────────────────────────────────────── */
+  .charts-main { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .charts-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px 24px;
+    box-shadow: var(--shadow); transition: transform .2s;
+  }
+  .chart-card:hover { transform: translateY(-2px); }
+  .card-head { margin-bottom: 18px; }
+  .card-title { font-family: var(--font-head); font-size: 15px; font-weight: 700; color: var(--text); }
+  .card-desc  { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* ─── BAR CHART ───────────────────────────────────────────────────── */
+  .bar-wrap { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-label { width: 130px; font-size: 12px; color: var(--muted); text-align:right; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar-track { flex: 1; background: rgba(255,255,255,0.05); border-radius: 6px; height: 28px; overflow: hidden; position: relative; }
+  .bar-fill {
+    height: 100%; border-radius: 6px;
+    display: flex; align-items: center; padding-left: 10px;
+    font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.9);
+    min-width: 2%;
+    animation: growBar .8s ease forwards;
+    transform-origin: left;
+  }
+  @keyframes growBar { from { width: 0 !important; } }
+  .bar-val { width: 90px; font-size: 12px; color: var(--text); text-align: right; font-weight: 500; flex-shrink: 0; }
+
+  /* ─── SVG CHARTS ──────────────────────────────────────────────────── */
+  .svg-wrap { display:flex; align-items:center; gap:20px; }
+  .svg-wrap svg { flex-shrink: 0; }
+  .legend { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 0; }
+  .legend-item { display:flex; align-items:center; gap:8px; font-size:12px; color: var(--muted); line-height:1.3; }
+  .legend-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+  .legend-name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .legend-pct { color: var(--text); font-weight: 600; font-size: 12px; }
+
+  /* ─── TOP MATERIALS TABLE ─────────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; margin-top: 4px; }
+  table { width:100%; border-collapse: collapse; }
+  thead th {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); padding: 0 12px 10px; text-align: left;
+    border-bottom: 1px solid var(--border); font-weight: 500;
+  }
+  thead th:not(:first-child) { text-align: right; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody td { padding: 10px 12px; font-size: 13px; color: var(--muted); }
+  tbody td:first-child { color: var(--text); font-weight: 500; }
+  tbody td:not(:first-child) { text-align: right; }
+  .rank { font-family: var(--font-head); font-size: 12px; color: var(--accent); font-weight: 700; }
+  .amt-bar { display:inline-block; height:4px; border-radius:2px; margin-left:6px; vertical-align:middle; opacity:0.7; }
+
+  /* ─── FOOTER ──────────────────────────────────────────────────────── */
+  .footer {
+    margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+  }
+  .footer p { font-size: 12px; color: var(--muted); }
+
+  /* ─── RESPONSIVE ──────────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .charts-main, .charts-row { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .svg-wrap { flex-direction: column; align-items: flex-start; }
+  }
+  @media (max-width: 500px) {
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    .bar-label { width: 80px; font-size: 11px; }
+  }
+
+  /* ─── ENTRY ANIMATION ─────────────────────────────────────────────── */
+  .fade-up { opacity:0; transform:translateY(18px); animation: fadeUp .5s ease forwards; }
+  @keyframes fadeUp { to { opacity:1; transform:translateY(0); } }
+  .d1{animation-delay:.05s} .d2{animation-delay:.1s} .d3{animation-delay:.15s}
+  .d4{animation-delay:.2s}  .d5{animation-delay:.25s} .d6{animation-delay:.3s}
+  .d7{animation-delay:.35s} .d8{animation-delay:.4s}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- ── HEADER ─────────────────────────────────────────────────── -->
+  <header class="header fade-up">
+    <div class="header-left">
+      <div class="eyebrow">Material Procurement Analytics</div>
+      <h1>GRN Stock <span>Report</span></h1>
+      <div class="header-meta">
+        <span>Period: <b>Aug 2021 – Apr 2026</b></span>
+        <span>Entries: <b>792</b></span>
+        <span>Categories: <b>10</b></span>
+      </div>
+    </div>
+    <div class="badge">Live Dashboard</div>
+  </header>
+
+  <!-- ── KPI CARDS ──────────────────────────────────────────────── -->
+  <div class="kpi-grid">
+    <div class="kpi kpi-0 fade-up d1">
+      <div class="kpi-label">Total Spend</div>
+      <div class="kpi-value">₹13.80 Cr</div>
+      <div class="kpi-sub">All 10 categories</div>
+    </div>
+    <div class="kpi kpi-1 fade-up d2">
+      <div class="kpi-label">Total GST</div>
+      <div class="kpi-value">₹2.45 Cr</div>
+      <div class="kpi-sub">Avg effective rate 17.7%</div>
+    </div>
+    <div class="kpi kpi-2 fade-up d3">
+      <div class="kpi-label">GRN Entries</div>
+      <div class="kpi-value">792</div>
+      <div class="kpi-sub">Across 5 years</div>
+    </div>
+    <div class="kpi kpi-3 fade-up d4">
+      <div class="kpi-label">Top Category</div>
+      <div class="kpi-value">STEEL</div>
+      <div class="kpi-sub">50% of total spend</div>
+    </div>
+  </div>
+
+  <!-- ── ROW 1: BAR CHART + PIE CHART ───────────────────────────── -->
+  <div class="charts-main">
+
+    <!-- BAR CHART -->
+    <div class="chart-card fade-up d5">
+      <div class="card-head">
+        <div class="card-title">Purchase Value by Category</div>
+        <div class="card-desc">Total amount (₹) per material category, sorted by spend</div>
+      </div>
+      <div class="bar-wrap" id="barChart"></div>
+    </div>
+
+    <!-- PIE CHART -->
+    <div class="chart-card fade-up d6">
+      <div class="card-head">
+        <div class="card-title">Spend Distribution</div>
+        <div class="card-desc">Share of total procurement value by category</div>
+      </div>
+      <div class="svg-wrap">
+        <svg id="pieChart" width="180" height="180" viewBox="0 0 180 180"></svg>
+        <div class="legend" id="pieLegend"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ROW 2: DONUT + TOP MATERIALS TABLE ─────────────────────── -->
+  <div class="charts-row">
+
+    <!-- DONUT CHART -->
+    <div class="chart-card fade-up d7">
+      <div class="card-head">
+        <div class="card-title">Entry Count Distribution</div>
+        <div class="card-desc">Number of GRN purchase entries per category</div>
+      </div>
+      <div class="svg-wrap">
+        <svg id="donutChart" width="180" height="180" viewBox="0 0 180 180"></svg>
+        <div class="legend" id="donutLegend"></div>
+      </div>
+    </div>
+
+    <!-- TOP MATERIALS TABLE -->
+    <div class="chart-card fade-up d8">
+      <div class="card-head">
+        <div class="card-title">Top 8 Materials by Value</div>
+        <div class="card-desc">Highest purchase-value materials across all GRN entries</div>
+      </div>
+      <div class="table-wrap">
+        <table id="topTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <p>GRN Stock Report Dashboard &mdash; Generated from procurement data</p>
+    <p>Total: ₹13,79,66,597.78 across 792 entries &mdash; 10 categories</p>
+  </footer>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════
+const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899','#a3e635','#fbbf24'];
+
+const categories = [
+  { name:'STEEL',                   amount:69016027,   tax:12422884, count:338 },
+  { name:'RMC',                     amount:58340493,   tax:10501288, count:283 },
+  { name:'SE AAC BLOCK',            amount:5667469,    tax:712982,   count:136 },
+  { name:'MARBLE',                  amount:2652214,    tax:477398,   count:6   },
+  { name:'CEMENT',                  amount:1353678,    tax:258271,   count:22  },
+  { name:'GRANITE',                 amount:467365,     tax:84125,    count:1   },
+  { name:'Office Container',        amount:364000,     tax:0,        count:2   },
+  { name:'STONE',                   amount:82620,      tax:4131,     count:1   },
+  { name:'Rented Dewat. Pump',      amount:17050,      tax:3069,     count:1   },
+  { name:'Tiling Adhesive',         amount:5680,       tax:1022,     count:2   },
+];
+
+const topMaterials = [
+  { name:'M25 AQUA',                          amount:15582547, count:73  },
+  { name:'STEEL RE-BAR TMT 08 MM FE500',      amount:11801937, count:50  },
+  { name:'STEEL RE-BAR TMT 10 MM FE500',      amount:11061307, count:52  },
+  { name:'STEEL RE-BAR TMT 12 MM FE500',      amount:10875744, count:45  },
+  { name:'M25 Coroprotect',                   amount:10862573, count:24  },
+  { name:'STEEL RE-BAR TMT 20 MM FE500',      amount:10660135, count:47  },
+  { name:'STEEL RE-BAR TMT 25 MM FE500',      amount:10401001, count:45  },
+  { name:'STEEL RE-BAR TMT 16 MM FE500',      amount:9080889,  count:46  },
+];
+
+const totalAmt   = categories.reduce((s,c)=>s+c.amount,0);
+const totalCount = categories.reduce((s,c)=>s+c.count,0);
+
+// ─── FORMAT ───────────────────────────────────────
+function fmt(v) {
+  if (v >= 10000000) return '₹' + (v/10000000).toFixed(2) + ' Cr';
+  if (v >= 100000)   return '₹' + (v/100000).toFixed(2)   + ' L';
+  return '₹' + v.toLocaleString('en-IN');
+}
+
+// ═══════════════════════════════════════════════════
+//  BAR CHART
+// ═══════════════════════════════════════════════════
+const barEl = document.getElementById('barChart');
+const maxAmt = categories[0].amount;
+categories.forEach((c, i) => {
+  const pct = (c.amount / maxAmt * 100).toFixed(1);
+  const delay = i * 80;
+  barEl.innerHTML += `
+    <div class="bar-row">
+      <div class="bar-label" title="${c.name}">${c.name}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%; background:${COLORS[i]}; animation-delay:${delay}ms">
+          ${pct > 18 ? (c.amount/totalAmt*100).toFixed(1)+'%' : ''}
+        </div>
+      </div>
+      <div class="bar-val">${fmt(c.amount)}</div>
+    </div>`;
+});
+
+// ═══════════════════════════════════════════════════
+//  PIE CHART
+// ═══════════════════════════════════════════════════
+function drawPie(svgId, legendId, data, valueKey, total) {
+  const svg = document.getElementById(svgId);
+  const leg = document.getElementById(legendId);
+  const cx = 90, cy = 90, r = 78;
+  const inner = svgId === 'donutChart' ? 42 : 0;
+  let angle = -Math.PI / 2;
+
+  data.forEach((c, i) => {
+    const slice = (c[valueKey] / total) * Math.PI * 2;
+    const x1 = cx + r * Math.cos(angle);
+    const y1 = cy + r * Math.sin(angle);
+    angle += slice;
+    const x2 = cx + r * Math.cos(angle);
+    const y2 = cy + r * Math.sin(angle);
+    const large = slice > Math.PI ? 1 : 0;
+    let d;
+    if (inner > 0) {
+      const ix1 = cx + inner * Math.cos(angle - slice);
+      const iy1 = cy + inner * Math.sin(angle - slice);
+      const ix2 = cx + inner * Math.cos(angle);
+      const iy2 = cy + inner * Math.sin(angle);
+      d = `M${ix1},${iy1} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} L${ix2},${iy2} A${inner},${inner} 0 ${large},0 ${ix1},${iy1} Z`;
+    } else {
+      d = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z`;
+    }
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', COLORS[i]);
+    path.setAttribute('stroke', '#0b0f1a');
+    path.setAttribute('stroke-width', '2');
+    path.style.cursor = 'pointer';
+    path.style.transition = 'opacity .2s';
+    path.addEventListener('mouseenter', () => path.style.opacity = '0.75');
+    path.addEventListener('mouseleave', () => path.style.opacity = '1');
+    svg.appendChild(path);
+  });
+
+  // Donut center text
+  if (inner > 0) {
+    const tg = document.createElementNS('http://www.w3.org/2000/svg','text');
+    tg.setAttribute('x', cx); tg.setAttribute('y', cy - 6);
+    tg.setAttribute('text-anchor','middle');
+    tg.setAttribute('fill','#f0f4ff'); tg.setAttribute('font-size','16');
+    tg.setAttribute('font-family','Syne,sans-serif'); tg.setAttribute('font-weight','700');
+    tg.textContent = total;
+    svg.appendChild(tg);
+    const tg2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    tg2.setAttribute('x', cx); tg2.setAttribute('y', cy + 12);
+    tg2.setAttribute('text-anchor','middle');
+    tg2.setAttribute('fill','#7a8aa8'); tg2.setAttribute('font-size','9');
+    tg2.setAttribute('font-family','DM Sans,sans-serif');
+    tg2.textContent = 'ENTRIES';
+    svg.appendChild(tg2);
+  }
+
+  // Legend (top 5)
+  data.slice(0,6).forEach((c, i) => {
+    const pct = (c[valueKey] / total * 100).toFixed(1);
+    leg.innerHTML += `
+      <div class="legend-item">
+        <span class="legend-dot" style="background:${COLORS[i]}"></span>
+        <span class="legend-name">${c.name}</span>
+        <span class="legend-pct">${pct}%</span>
+      </div>`;
+  });
+}
+
+drawPie('pieChart',   'pieLegend',   categories, 'amount', totalAmt);
+drawPie('donutChart', 'donutLegend', categories, 'count',  totalCount);
+
+// ═══════════════════════════════════════════════════
+//  TOP MATERIALS TABLE
+// ═══════════════════════════════════════════════════
+const tbl = document.getElementById('topTable');
+const maxM = topMaterials[0].amount;
+tbl.innerHTML = `
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Material Name</th>
+      <th>Amount</th>
+      <th>Entries</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${topMaterials.map((m,i) => {
+      const barW = Math.round(m.amount/maxM*60);
+      return `<tr>
+        <td><span class="rank">${String(i+1).padStart(2,'0')}</span></td>
+        <td>${m.name}<span class="amt-bar" style="width:${barW}px;background:${COLORS[i % COLORS.length]}"></span></td>
+        <td>${fmt(m.amount)}</td>
+        <td>${m.count}</td>
+      </tr>`;
+    }).join('')}
+  </tbody>`;
+</script>
+</body>
+</html>
